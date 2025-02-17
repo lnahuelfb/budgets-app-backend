@@ -1,5 +1,5 @@
 import { prisma } from "../config/db"
-import e, { Request, Response } from "express";
+import { Request, Response } from "express";
 import { ZodError } from "zod";
 import { userSchema } from "../validations/user.schema";
 import { idSchema } from "../validations/id.schema";
@@ -13,10 +13,7 @@ export const getUsers = async (_req: Request, res: Response) => {
     });
   }
 
-  return res.status(200).json({
-    message: "Lista de usuarios",
-    users
-  });
+  return res.status(200).json({ users });
 };
 
 export const getUserById = async (req: Request, res: Response) => {
@@ -28,6 +25,9 @@ export const getUserById = async (req: Request, res: Response) => {
     const user = await prisma.user.findUnique({
       where: {
         id
+      },
+      include: {
+        budgets: true
       }
     });
 
@@ -38,7 +38,6 @@ export const getUserById = async (req: Request, res: Response) => {
     }
 
     return res.status(200).json({
-      message: "Usuario encontrado",
       user
     });
   } catch (error) {
@@ -76,10 +75,7 @@ export const createUser = async (req: Request, res: Response) => {
       });
     }
 
-    return res.status(201).json({
-      message: "Usuario creado",
-      user
-    });
+    return res.status(201).json({ user });
 
   } catch (error) {
     if (error instanceof ZodError) {
@@ -121,10 +117,40 @@ export const editUser = async (req: Request, res: Response) => {
       });
     }
 
-    return res.status(200).json({
-      message: "Usuario editado",
-      user
+    return res.status(200).json({ user });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({
+        message: "Error de validación",
+        errors: error.errors
+      });
+    }
+
+    return res.status(500).json({
+      message: "Error interno del servidor"
     });
+  }
+}
+
+export const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const validatedId = idSchema.parse(req.params);
+    const { id } = validatedId;
+
+    const user = await prisma.user.delete({
+      where: {
+        id
+      }
+    });
+
+    if (!user) {
+      return res.status(500).json({
+        message: "Error al eliminar el usuario"
+      });
+    }
+
+    return res.status(200).json({ user });
+
   } catch (error) {
     if (error instanceof ZodError) {
       return res.status(400).json({
